@@ -31,8 +31,7 @@ app.use(session({
 }));
 
 // API klíč k Rebrickable z Environment Variables na Renderu
-const REBRICKABLE_API_KEY = process.env.REB_KEY;
-
+const REBRICKABLE_API_KEY = process.env.REB_KEY ? process.env.REB_KEY.trim() : null;
 // --- POMOCNÉ FUNKCE ---
 
 async function fetchAndSaveSet(setNum, quantity) {
