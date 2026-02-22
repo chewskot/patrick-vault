@@ -22,33 +22,36 @@ db.prepare(`CREATE TABLE IF NOT EXISTS inventory (
 app.set('view engine', 'ejs');
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
+
+// Zabezpečení session - tajný klíč si bere z ENV nebo použije default
 app.use(session({
-    secret: 'lego-vault-super-secret',
+    secret: process.env.SESSION_SECRET || 'lego-vault-super-secret',
     resave: false,
     saveUninitialized: true
 }));
 
+// API klíč k Rebrickable z Environment Variables na Renderu
 const REBRICKABLE_API_KEY = process.env.REB_KEY;
 
 // --- POMOCNÉ FUNKCE ---
 
 async function fetchAndSaveSet(setNum, quantity) {
+    if (!REBRICKABLE_API_KEY) {
+        console.error("❌ CHYBA: REB_KEY není nastaven v Environment Variables na Renderu!");
+        return false;
+    }
+
     try {
-        // Kontrola, zda již set v DB je (aby nás API limit nebrzdil při re-importu)
         const existing = db.prepare("SELECT set_num FROM inventory WHERE set_num = ?").get(setNum);
         if (existing) {
-            console.log(`⏩ Přeskakuji ${setNum}, již je v databázi.`);
+            console.log(`⏩ Přeskakuji ${setNum}, již je v DB.`);
             return true;
         }
 
-        console.log(`Stahuji data pro set: ${setNum}...`);
-        
-        // 1. Základní data
         const res = await axios.get(`https://rebrickable.com/api/v3/lego/sets/${setNum}-1/`, {
             headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` }
         });
         
-        // 2. Název tématu
         const themeRes = await axios.get(`https://rebrickable.com/api/v3/lego/themes/${res.data.theme_id}/`, {
             headers: { 'Authorization': `key ${REBRICKABLE_API_KEY}` }
         });
@@ -62,14 +65,9 @@ async function fetchAndSaveSet(setNum, quantity) {
         `);
         
         insert.run(setNum, name, year, themeName, set_img_url, quantity);
-        console.log(`✅ Uloženo: ${name} (${themeName})`);
         return true;
     } catch (e) {
-        if (e.response && e.response.status === 429) {
-            console.error(`❌ API Limit (429) u ${setNum}. Počkej chvíli a zkus F5.`);
-        } else {
-            console.error(`❌ Chyba u setu ${setNum}: ${e.message}`);
-        }
+        console.error(`❌ Chyba u setu ${setNum}: ${e.message}`);
         return false;
     }
 }
@@ -81,6 +79,7 @@ const isAdmin = (req, res, next) => {
 
 // --- ROUTY ---
 
+// Hlavní galerie
 app.get('/', (req, res) => {
     const { search, year, theme } = req.query;
     let query = "SELECT * FROM inventory WHERE 1=1";
@@ -102,8 +101,6 @@ app.get('/', (req, res) => {
     const sets = db.prepare(query).all(...params);
     const years = db.prepare("SELECT DISTINCT year FROM inventory ORDER BY year DESC").all();
     const themes = db.prepare("SELECT DISTINCT theme FROM inventory ORDER BY theme ASC").all();
-    
-    // Statistiky pro záhlaví
     const stats = db.prepare("SELECT COUNT(*) as totalSets, SUM(quantity) as totalItems FROM inventory").get();
 
     res.render('index', { 
@@ -117,17 +114,24 @@ app.get('/', (req, res) => {
     });
 });
 
+// Login - HESLO JE SCHOVANÉ V ENV
 app.get('/login', (req, res) => res.render('login'));
 app.post('/login', (req, res) => {
-    const MY_PASSWORD = "TvojeHeslo123"; // SEM DEJ SVÉ HESLO
+    const MY_PASSWORD = process.env.ADMIN_PASS;
+
+    if (!MY_PASSWORD) {
+        return res.send("⚠️ CHYBA: Na Renderu není nastaveno heslo (ADMIN_PASS)!");
+    }
+
     if (req.body.password === MY_PASSWORD) {
         req.session.isLogged = true;
         res.redirect('/admin');
     } else {
-        res.send("Špatné heslo! <a href='/login'>Zpět</a>");
+        res.send("Špatné heslo! <a href='/login'>Zkusit znovu</a>");
     }
 });
 
+// Admin panel
 app.get('/admin', isAdmin, (req, res) => {
     const sets = db.prepare("SELECT * FROM inventory ORDER BY id DESC").all();
     res.render('admin', { sets });
@@ -143,6 +147,7 @@ app.post('/delete/:id', isAdmin, (req, res) => {
     res.redirect('/admin');
 });
 
+// Hromadný import (pokud bys někdy mazal DB)
 app.get('/import-home', async (req, res) => {
     const myHomeInventory = [
         { id: "75388", q: 1 }, { id: "75394", q: 1 }, { id: "75398", q: 1 }, { id: "75393", q: 1 },
@@ -158,14 +163,15 @@ app.get('/import-home', async (req, res) => {
         { id: "75411", q: 1 }, { id: "40179", q: 1 }, { id: "75367", q: 1 }
     ];
 
-    console.log("--- START CHYTRÉHO IMPORTU ---");
+    console.log("--- START IMPORTU ---");
     for (const item of myHomeInventory) {
         await fetchAndSaveSet(item.id, item.q);
-        await new Promise(r => setTimeout(r, 1000)); // Bezpečná pauza 1s
+        await new Promise(r => setTimeout(r, 1000));
     }
-    console.log("--- IMPORT DOKONČEN ---");
+    console.log("--- IMPORT HOTOV ---");
     res.send("<h1>Import hotov!</h1><a href='/'>Zobrazit galerii</a>");
 });
 
+// --- SPUŠTĚNÍ ---
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server na http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`Server běží na portu ${PORT}`));
