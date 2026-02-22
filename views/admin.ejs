@@ -2,44 +2,61 @@
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
-    <title>Admin - Správa Lega</title>
+    <title>LEGO Vault - Admin</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-900 text-white p-8">
-    <div class="max-w-4xl mx-auto">
-        <div class="flex justify-between mb-8">
-            <h1 class="text-2xl font-bold">Správa sbírky</h1>
-            <a href="/" class="text-blue-400 hover:underline">← Zpět na přehled</a>
-        </div>
+    <div class="max-w-5xl mx-auto">
+        <header class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-black text-yellow-500">🧱 ADMIN PANEL</h1>
+            <a href="/" class="text-gray-400 hover:text-white">← Zpět do galerie</a>
+        </header>
 
-        <div class="bg-gray-800 p-6 rounded-lg mb-8 shadow-xl border border-gray-700">
-            <h2 class="text-xl mb-4 text-yellow-500 font-semibold">Přidat nový set</h2>
-            <form action="/add" method="POST" class="flex gap-4">
-                <input type="text" name="set_num" placeholder="Číslo setu (např. 75367)" required 
-                       class="bg-gray-700 border border-gray-600 p-2 rounded flex-1 focus:outline-none focus:border-yellow-500 text-white">
+        <section class="bg-gray-800 p-6 rounded-2xl mb-8 border border-gray-700">
+            <h2 class="text-xl font-bold mb-4">Přidat nový set do sbírky</h2>
+            <form action="/add" method="POST" class="flex flex-wrap gap-4">
+                <input type="text" name="set_num" placeholder="Číslo setu (např. 75337)" required 
+                       class="bg-gray-900 border border-gray-700 p-2 rounded flex-1">
                 <input type="number" name="quantity" value="1" min="1" required 
-                       class="bg-gray-700 border border-gray-600 p-2 rounded w-20 focus:outline-none">
-                <button type="submit" class="bg-yellow-600 hover:bg-yellow-500 px-6 py-2 rounded font-bold transition">Přidat do DB</button>
+                       class="bg-gray-900 border border-gray-700 p-2 rounded w-24">
+                <button type="submit" class="bg-yellow-500 text-black font-bold px-6 py-2 rounded hover:bg-yellow-400 transition">
+                    + Přidat do databáze
+                </button>
             </form>
-        </div>
+            <p class="text-gray-500 text-xs mt-2 italic">* Pokud set už existuje, množství bude automaticky navýšeno.</p>
+        </section>
 
-        <div class="bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
-            <table class="w-full text-left">
-                <thead class="bg-gray-700 text-gray-300">
-                    <tr>
-                        <th class="p-4">Set</th>
-                        <th class="p-4 text-center">Ks</th>
-                        <th class="p-4 text-right">Akce</th>
+        <div class="bg-gray-800 rounded-2xl overflow-hidden border border-gray-700">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-700 text-gray-300 text-sm uppercase">
+                        <th class="p-4 font-bold">Set</th>
+                        <th class="p-4 font-bold text-center">Množství</th>
+                        <th class="p-4 font-bold text-right">Akce</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody class="divide-y divide-gray-700">
                     <% sets.forEach(set => { %>
-                    <tr class="border-b border-gray-700 hover:bg-gray-750">
-                        <td class="p-4 font-mono"><%= set.set_num %> - <%= set.name %></td>
-                        <td class="p-4 text-center"><%= set.quantity %></td>
+                    <tr class="hover:bg-gray-750 transition">
+                        <td class="p-4 flex items-center gap-4">
+                            <img src="<%= set.img_url %>" class="w-12 h-12 object-contain bg-white rounded p-1">
+                            <div>
+                                <div class="font-bold text-sm"><%= set.name %></div>
+                                <div class="text-xs text-gray-500 font-mono"><%= set.set_num %> • <%= set.theme %></div>
+                            </div>
+                        </td>
+                        <td class="p-4">
+                            <form action="/update-quantity/<%= set.id %>" method="POST" class="flex items-center justify-center gap-2">
+                                <input type="number" name="quantity" value="<%= set.quantity %>" min="1" 
+                                       class="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-center w-16 text-sm focus:border-yellow-500 outline-none">
+                                <button type="submit" title="Uložit množství" class="text-blue-500 hover:text-blue-400 text-sm font-bold">
+                                    OK
+                                </button>
+                            </form>
+                        </td>
                         <td class="p-4 text-right">
                             <form action="/delete/<%= set.id %>" method="POST" onsubmit="return confirm('Opravdu smazat?')">
-                                <button class="text-red-500 hover:text-red-400 font-bold">Smazat</button>
+                                <button class="text-red-500 hover:text-red-400 text-sm font-bold">Smazat</button>
                             </form>
                         </td>
                     </tr>
