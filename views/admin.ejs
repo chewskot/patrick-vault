@@ -9,55 +9,45 @@
     <div class="max-w-5xl mx-auto">
         <header class="flex justify-between items-center mb-8">
             <h1 class="text-3xl font-black text-yellow-500">🧱 ADMIN PANEL</h1>
-            <a href="/" class="text-gray-400 hover:text-white">← Zpět do galerie</a>
+            <a href="/" class="text-gray-400 hover:text-white">← Galerie</a>
         </header>
 
-        <section class="bg-gray-800 p-6 rounded-2xl mb-8 border border-gray-700">
-            <h2 class="text-xl font-bold mb-4">Přidat nový set do sbírky</h2>
-            <form action="/add" method="POST" class="flex flex-wrap gap-4">
-                <input type="text" name="set_num" placeholder="Číslo setu (např. 75337)" required 
-                       class="bg-gray-900 border border-gray-700 p-2 rounded flex-1">
-                <input type="number" name="quantity" value="1" min="1" required 
-                       class="bg-gray-900 border border-gray-700 p-2 rounded w-24">
-                <button type="submit" class="bg-yellow-500 text-black font-bold px-6 py-2 rounded hover:bg-yellow-400 transition">
-                    + Přidat do databáze
-                </button>
-            </form>
-            <p class="text-gray-500 text-xs mt-2 italic">* Pokud set už existuje, množství bude automaticky navýšeno.</p>
-        </section>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+            <section class="bg-gray-800 p-6 rounded-2xl border border-gray-700">
+                <h2 class="text-lg font-bold mb-4 text-blue-400">Hromadný import (Formát: 1x 75388)</h2>
+                <form action="/bulk-import" method="POST">
+                    <textarea name="importData" rows="8" class="w-full bg-gray-900 border border-gray-700 p-3 rounded mb-4 text-sm font-mono text-gray-300" placeholder="1x 75388&#10;15x 75373"></textarea>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 py-2 rounded font-bold transition">Spustit import</button>
+                </form>
+            </section>
+
+            <section class="bg-red-900/20 p-6 rounded-2xl border border-red-900/50">
+                <h2 class="text-lg font-bold mb-4 text-red-500">Nebezpečná zóna</h2>
+                <form action="/clear-inventory" method="POST" onsubmit="return confirm('OPRAVDU SMAZAT VŠE?')">
+                    <p class="text-xs text-gray-400 mb-4 italic">Zadej heslo pro smazání celé databáze:</p>
+                    <input type="password" name="confirmPassword" placeholder="Tvoje heslo" required class="w-full bg-gray-900 border border-red-900/50 p-2 rounded mb-4">
+                    <button type="submit" class="w-full bg-red-600 hover:bg-red-500 py-2 rounded font-bold transition italic">Smazat všechna data</button>
+                </form>
+            </section>
+        </div>
 
         <div class="bg-gray-800 rounded-2xl overflow-hidden border border-gray-700">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="bg-gray-700 text-gray-300 text-sm uppercase">
-                        <th class="p-4 font-bold">Set</th>
-                        <th class="p-4 font-bold text-center">Množství</th>
-                        <th class="p-4 font-bold text-right">Akce</th>
-                    </tr>
-                </thead>
+            <table class="w-full text-left">
                 <tbody class="divide-y divide-gray-700">
                     <% sets.forEach(set => { %>
-                    <tr class="hover:bg-gray-750 transition">
+                    <tr class="hover:bg-gray-750">
                         <td class="p-4 flex items-center gap-4">
-                            <img src="<%= set.img_url %>" class="w-12 h-12 object-contain bg-white rounded p-1">
-                            <div>
-                                <div class="font-bold text-sm"><%= set.name %></div>
-                                <div class="text-xs text-gray-500 font-mono"><%= set.set_num %> • <%= set.theme %></div>
-                            </div>
+                            <img src="<%= set.img_url %>" class="w-10 h-10 object-contain bg-white rounded">
+                            <span class="text-sm font-bold"><%= set.name %> (<%= set.set_num %>)</span>
                         </td>
                         <td class="p-4">
-                            <form action="/update-quantity/<%= set.id %>" method="POST" class="flex items-center justify-center gap-2">
-                                <input type="number" name="quantity" value="<%= set.quantity %>" min="1" 
-                                       class="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-center w-16 text-sm focus:border-yellow-500 outline-none">
-                                <button type="submit" title="Uložit množství" class="text-blue-500 hover:text-blue-400 text-sm font-bold">
-                                    OK
-                                </button>
+                            <form action="/update-quantity/<%= set.id %>" method="POST" class="flex gap-2">
+                                <input type="number" name="quantity" value="<%= set.quantity %>" class="w-14 bg-gray-900 border border-gray-700 rounded text-center text-sm">
+                                <button type="submit" class="text-blue-500 text-xs font-bold">OK</button>
                             </form>
                         </td>
                         <td class="p-4 text-right">
-                            <form action="/delete/<%= set.id %>" method="POST" onsubmit="return confirm('Opravdu smazat?')">
-                                <button class="text-red-500 hover:text-red-400 text-sm font-bold">Smazat</button>
-                            </form>
+                            <form action="/delete/<%= set.id %>" method="POST"><button class="text-red-500 text-xs">Smazat</button></form>
                         </td>
                     </tr>
                     <% }); %>
